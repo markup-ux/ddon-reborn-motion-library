@@ -1,0 +1,5 @@
+numpy>=2.4,<3
+scipy>=1.17,<2
+Pillow>=11.3,<13
+zstandard>=0.25,<1
+mmh3>=5,<6

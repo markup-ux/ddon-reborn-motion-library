@@ -1,0 +1,1025 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DDON Reborn Motion Library</title>
+<style>
+  :root { color-scheme: dark; font: 14px system-ui, sans-serif; color:#edf1f7; background:#10141c; }
+  * { box-sizing:border-box; }
+  body { margin:0; }
+  header { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 22px; border-bottom:1px solid #34415a; }
+  h1 { font-size:22px; letter-spacing:-.04em; margin:0; }
+  h2 { font-size:14px; margin:0; }
+  main { display:grid; grid-template-columns:minmax(260px,365px) 1fr; min-height:calc(100vh - 60px); }
+  aside { padding:16px; background:#161d29; border-right:1px solid #34415a; }
+  input,button,select { font:inherit; color:inherit; border:1px solid #46546b; background:#202a39; border-radius:6px; padding:7px 9px; }
+  button:not(:disabled) { cursor:pointer; } button:disabled { opacity:.5; }
+  button.primary { color:#211509; background:#ffbd71; border-color:#ffbd71; font-weight:700; }
+  input:focus-visible, button:focus-visible, select:focus-visible { outline:2px solid #ffbd71; outline-offset:2px; }
+  [hidden] { display:none !important; }
+  .library-tabs { display:flex; gap:6px; margin-bottom:14px; }
+  .library-tabs button[aria-pressed=true] { border-color:#ffbd71; }
+  #effects-library select { max-width:100%; }
+  #effect-choice { width:100%; margin-bottom:8px; }
+  #effect-status { min-height:1.4em; color:#adb9cd; overflow-wrap:anywhere; }
+  .filters { display:grid; grid-template-columns:1fr 1.4fr; gap:8px; margin-top:10px; }
+  #vocation, #search { grid-column:1/-1; width:100%; }
+  #results { display:flex; flex-direction:column; gap:4px; margin:10px 0; max-height:43vh; min-height:80px; overflow:auto; }
+  .row { width:100%; text-align:left; overflow-wrap:anywhere; padding:7px 8px; }
+  .row[aria-pressed=true] { border-color:#ffbd71; }
+  .asset-id { display:block; color:#adb9cd; font-size:.78rem; margin-top:3px; }
+  .list-nav { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .muted, #status { color:#adb9cd; }
+  #selection { padding-top:14px; margin-top:14px; border-top:1px solid #34415a; }
+  #selection select:not([hidden]) { display:block; width:100%; margin:8px 0; }
+  #actions, .sequence-actions { display:flex; flex-wrap:wrap; gap:6px; }
+  #sequence-list { padding-left:26px; max-height:18rem; overflow-y:auto; }
+  #sequence-list li { margin:5px 0; }
+  #sequence-list button { margin-left:5px; padding:2px 6px; }
+  #status { min-height:1.4em; margin-top:8px; }
+  details { padding-top:12px; margin-top:12px; border-top:1px solid #34415a; }
+  summary { cursor:pointer; }
+  .settings { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:10px 0; }
+  .settings label { display:flex; flex-direction:column; gap:5px; min-width:0; }
+  .settings label[hidden] { display:none; }
+  #outfit, #scene-items { display:flex; flex-wrap:wrap; gap:5px; margin:8px 0; }
+  #gear-search, #gear-results, #gear-member { width:100%; margin-bottom:8px; }
+  #gear-slot-field { grid-column:1/-1; }
+  #gear-palette-field:not([hidden]) { display:grid; gap:5px; margin:8px 0; }
+  #gear-palette { width:100%; }
+  .token { padding:4px 6px; overflow-wrap:anywhere; }
+  .viewer { min-width:0; }
+  .gear-feedback:not([hidden]) { display:flex; align-items:center; gap:8px; }
+  #gear-feedback { margin:8px 0; color:#b9e8ff; overflow-wrap:anywhere; }
+  #gear-feedback[data-state="error"] { color:#ffc1a8; }
+  .gear-spinner { width:14px; height:14px; flex:0 0 14px; border:2px solid #52627b;
+    border-top-color:#92dcff; border-radius:50%; animation:gear-spin .8s linear infinite; }
+  @keyframes gear-spin { to { transform:rotate(360deg); } }
+  @media (prefers-reduced-motion:reduce) { .gear-spinner { animation:none; } }
+  #viewer-gear-progress { position:sticky; top:12px; height:0; z-index:1; justify-content:flex-end;
+    align-items:flex-start; pointer-events:none; margin:0 16px; }
+  #viewer-gear-progress > span { display:flex; align-items:center; gap:9px; padding:9px 12px;
+    border:1px solid #52627b; border-radius:6px; background:#202a39; color:#edf1f7; }
+  #viewer-empty { padding:28px clamp(14px, 3vw, 42px); }
+  iframe:not([hidden]) { width:100%; height:max(620px,calc(100vh - 67px)); border:0; display:block; background:#10141c; }
+  @media (max-width:740px) {
+    main { grid-template-columns:1fr; }
+    aside { border-right:0; border-bottom:1px solid #34415a; }
+    #results { max-height:225px; }
+  }
+</style>
+<header><h1>DDON Reborn Motion Library <small>Beta</small></h1></header>
+<main>
+  <aside>
+    <nav class="library-tabs" aria-label="Preview library">
+      <button id="animations-tab" aria-controls="animations-library" aria-pressed="true" type="button">Animations</button>
+      <button id="effects-tab" aria-controls="effects-library" aria-pressed="false" type="button">Effects</button>
+    </nav>
+    <div id="animations-library">
+    <h2>Installed asset catalog</h2>
+    <div class="filters">
+      <select id="game" aria-label="Game"><option value="">Both games</option><option>DDON</option><option>DD2</option></select>
+      <select id="kind" aria-label="Asset category">
+        <option value="animation">Animations</option><option value="appearance">Character parts</option>
+        <option value="armor">Armor</option><option value="weapon">Weapons</option>
+        <option value="model">DDON models</option><option value="target">DD2 targets</option><option value="">All assets</option>
+      </select>
+      <select id="vocation" aria-label="DDON vocation"><option value="">All vocations</option></select>
+      <input id="search" type="search" placeholder="Search names or asset IDs" aria-label="Search assets">
+    </div>
+    <div id="results"></div>
+    <div class="list-nav"><button id="previous">Previous</button><span id="count" class="muted"></span><button id="next">Next</button></div>
+    <section id="selection" hidden>
+      <h2 id="title"></h2>
+      <select id="member" aria-label="Archive member"></select>
+      <select id="clip" aria-label="Animation clip" hidden></select>
+      <div id="actions"></div>
+      <details id="sequence" hidden>
+        <summary>Clip sequence</summary>
+        <ol id="sequence-list"></ol>
+        <div class="sequence-actions">
+          <button id="sequence-add" type="button">Add selected clip</button>
+          <button id="sequence-load" type="button" disabled>Load sequence</button>
+          <button id="preview-single-clip" type="button" hidden>Preview selected clip</button>
+        </div>
+      </details>
+      <label id="motion-effect-field" hidden>Motion effect
+        <select id="motion-effect" aria-label="Motion effect"></select>
+      </label>
+      <div id="status" role="status"></div>
+    </section>
+    <details id="equipment">
+      <summary>Equipment</summary>
+      <div class="settings">
+        <label>Character <select id="gear-game"><option value="DDON">DDON source</option><option value="DD2">DD2 target</option></select></label>
+        <label>Type <select id="gear-kind"><option value="weapon">Weapons</option><option value="armor">Armor</option></select></label>
+        <label id="gear-slot-field"><span id="gear-slot-label">Weapon type</span>
+          <select id="gear-slot"><option value="">All weapon types</option></select>
+        </label>
+      </div>
+      <input id="gear-search" type="search" placeholder="Search equipment name or ID" aria-label="Search equipment">
+      <select id="gear-results" aria-label="Equipment results" size="5"></select>
+      <div class="list-nav"><button id="gear-previous">Previous</button><span id="gear-count" class="muted" role="status"></span><button id="gear-next">Next</button></div>
+      <select id="gear-member" aria-label="Equipment model" hidden></select>
+      <label id="gear-palette-field" hidden>DD2 color variant <select id="gear-palette"></select></label>
+      <div id="gear-feedback" class="gear-feedback" role="status" hidden>
+        <span id="gear-feedback-spinner" class="gear-spinner" aria-hidden="true"></span>
+        <span id="gear-feedback-text"></span>
+      </div>
+      <div class="settings">
+        <label id="gear-set-field" hidden>Armor set <select id="gear-set"></select></label>
+      </div>
+      <div class="sequence-actions">
+        <button id="clear-armor" type="button">Clear armor</button>
+        <button id="clear-weapon" type="button">Clear weapon</button>
+        <button id="restore-gear" type="button">Restore defaults</button>
+      </div>
+      <div id="outfit"></div>
+    </details>
+    <details open>
+      <summary>Character setup</summary>
+      <div class="settings">
+        <label>DDON character <select id="ddon-character"><option value="base">Default male</option><option value="female">Default female</option></select></label>
+        <label>DD2 character <select id="dd2-character"><option value="base">Base player</option></select></label>
+        <label>DD2 body <select id="body"><option value="male">Male</option><option value="female">Female</option></select></label>
+        <label>Height scale <input id="height" type="number" min=".65" max="1.45" step=".05" value="1"></label>
+      </div>
+      <label><input id="feet" type="checkbox" checked> Reconstruct DDON foot markers</label>
+      <label><input id="test-armor" type="checkbox" checked> Wear armor</label>
+    </details>
+    <details id="target-fx">
+      <summary>Target and FX</summary>
+      <div id="scene-items"></div>
+      <div class="settings">
+        <label>Target distance <input id="distance" type="number" min=".3" max="4" step=".1" value="1.3"></label>
+        <label>Attach on sample <input id="hit" type="number" min="0" step="1" value="12"></label>
+        <label>Source event marker <select id="source-event"><option value="">Manual sample</option></select></label>
+        <label id="effect-field" hidden>Archive FX mesh <select id="effect"><option value="">Off</option></select></label>
+        <label>Attachment height <input id="anchor" type="number" min="0" max="1" step=".05" value=".65"></label>
+        <label>Object scale <input id="object-scale" type="number" min=".05" max="2" step=".05" value=".3"></label>
+        <label>Target joint <select id="joint"><option value="">Height marker</option></select></label>
+      </div>
+      <small id="fx-status" class="muted">Select an animation to check for FX meshes.</small>
+    </details>
+    </div>
+    <section id="effects-library" hidden>
+      <h2>Effect library</h2>
+      <div class="settings">
+        <label>Game <select id="effect-game"><option value="">Both games</option><option>DDON</option><option>DD2</option></select></label>
+      </div>
+      <select id="effect-choice" aria-label="Effect" size="5"></select>
+      <small id="effect-source" class="muted"></small>
+      <div class="settings">
+        <label>Placement
+          <select id="effect-anchor"><option value="body">Character center</option><option value="hand">Right hand</option>
+            <option value="ground">Ground</option><option value="target">Selected target</option></select>
+        </label>
+        <label>Trigger
+          <select id="effect-trigger"><option value="action">Action start</option><option value="marker">Target and FX marker</option></select>
+        </label>
+      </div>
+      <p id="effect-motion" class="muted"></p>
+      <div class="sequence-actions">
+        <button id="play-effect" type="button">Play effect</button>
+        <button id="play-effect-motion" type="button" class="primary">Play with motion</button>
+      </div>
+      <p id="effect-status" role="status"></p>
+    </section>
+  </aside>
+  <section class="viewer">
+    <div id="viewer-gear-progress" class="gear-feedback" aria-hidden="true" hidden>
+      <span><span class="gear-spinner"></span><span id="viewer-gear-progress-text"></span></span>
+    </div>
+    <p id="viewer-empty" class="muted" role="status">Select a DDON player animation to compare it with its DD2 retarget.</p>
+    <iframe id="viewer" title="Motion preview" hidden></iframe>
+  </section>
+</main>
+<script>
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const selected = { asset: null, clips: [], sequence: [], activeSequence: [], playAll: false };
+  const setup = {wear: [], armorSet: {}, clearArmor: {}, clearWeapon: {}};
+  let armorSets = null;
+  const slots = {
+    rig: 'DDON rig', head: 'DD2 head', weapon_ddon: 'DDON weapon', weapon_dd2: 'DD2 weapon',
+    mob: 'Target', object: 'Attached object', mob_motion: 'Target motion'
+  };
+  let page = 0, total = 0, searchTimer, searchVersion = 0, selectionVersion = 0, previewVersion = 0, lastURL;
+  let gearPage = 0, gearVersion = 0, gearMemberVersion = 0, gearTimer, gearRows = [];
+  let pendingPreview, gearUpdate, gearPalettes = [];
+  const vfx = {items: null, open: false, layer: null};
+  function url(route, params) { return route + '?' + params.toString(); }
+  async function api(route, params) {
+    const response = await fetch(url(route, params));
+    const data = await response.json();
+    if (!response.ok) throw Error(data.error || response.statusText);
+    return data;
+  }
+  const describe = item => {
+    if (!item) return '';
+    if (item.label) return item.label;
+    const resource = item.name.split('/').pop();
+    if (item.shared) return 'Shared mesh · ' + item.aliases[0];
+    return item.type_label ? item.type_label + ' · ' + resource : resource;
+  };
+  function action(label, run, primary = false) {
+    const button = document.createElement('button');
+    button.textContent = label;
+    if (primary) button.className = 'primary';
+    button.addEventListener('click', run);
+    return button;
+  }
+  function message(value) { $(vfx.open ? 'effect-status' : 'status').textContent = value; }
+  function syncEffectControls() {
+    const item = vfx.items?.find(row => row.id === $('effect-choice').value);
+    const motion = selected.asset?.kind === 'animation' && Boolean($('clip').value) && !$('clip').hidden;
+    $('effect-source').textContent = item?.source || '';
+    $('effect-motion').textContent = motion
+      ? 'Motion: ' + describe(selected.asset) : 'Select an animation in the Animations tab to play it with an effect.';
+    $('play-effect').disabled = !item;
+    $('play-effect-motion').disabled = !item || !motion;
+    $('motion-effect-field').hidden = !motion;
+    const choice = $('motion-effect');
+    choice.value = vfx.layer?.id || (selected.spriteOff ? 'off' : 'auto');
+    if (choice.value === '') choice.value = 'auto';
+    $('effect-anchor').querySelector('[value="target"]').disabled = !setup.mob;
+    if (!setup.mob && $('effect-anchor').value === 'target') $('effect-anchor').value = 'body';
+    return item;
+  }
+  function showEffectChoices() {
+    const choice = $('effect-choice');
+    const previous = choice.value;
+    const game = $('effect-game').value;
+    options(choice, (vfx.items || []).filter(row => !game || row.game === game)
+      .map(row => ({name: row.game + ' · ' + row.name, key: row.id})));
+    if ([...choice.options].some(option => option.value === previous)) choice.value = previous;
+    else choice.selectedIndex = choice.options.length ? 0 : -1;
+    syncEffectControls();
+  }
+  async function openEffects() {
+    vfx.open = true;
+    $('animations-tab').setAttribute('aria-pressed', 'false');
+    $('effects-tab').setAttribute('aria-pressed', 'true');
+    $('animations-library').hidden = true;
+    $('effects-library').hidden = false;
+    syncEffectControls();
+    try {
+      if (!vfx.items) vfx.items = await api('/api/effects', new URLSearchParams());
+      if (!vfx.open) return;
+      showEffectChoices();
+      loadPreview({solo: true});
+    } catch (error) {
+      if (vfx.open) message(error.message);
+    }
+  }
+  $('effects-tab').addEventListener('click', openEffects);
+  $('animations-tab').addEventListener('click', () => {
+    if (!vfx.open) return;
+    vfx.open = false;
+    cancelPreview();
+    $('animations-tab').setAttribute('aria-pressed', 'true');
+    $('effects-tab').setAttribute('aria-pressed', 'false');
+    $('animations-library').hidden = false;
+    $('effects-library').hidden = true;
+    syncEffectControls();
+    if (selected.asset && (selected.asset.kind !== 'animation' || $('clip').value)) loadPreview();
+    else {
+      $('viewer').hidden = true;
+      $('viewer-empty').hidden = false;
+      $('viewer-empty').textContent = 'Select a DDON player animation to compare it with its DD2 retarget.';
+    }
+  });
+  $('effect-game').addEventListener('change', () => {
+    showEffectChoices();
+    loadPreview({solo: true});
+  });
+  $('effect-choice').addEventListener('change', () => {
+    syncEffectControls();
+    loadPreview({solo: true});
+  });
+  $('play-effect').addEventListener('click', () => loadPreview({solo: true, autoplay: true}));
+  $('play-effect-motion').addEventListener('click', () => {
+    const effect = syncEffectControls();
+    if (!effect) return;
+    vfx.layer = {...effect, anchor: $('effect-anchor').value, trigger: $('effect-trigger').value};
+    loadPreview({autoplay: true});
+  });
+  $('motion-effect').addEventListener('change', () => {
+    const value = $('motion-effect').value;
+    const option = selected.spriteChoices.find(item => item.id === value);
+    vfx.layer = option ? {...option, anchor: option.anchor || 'body', trigger: 'action'} : null;
+    selected.spriteOff = value === 'off';
+    $('effect').value = value === 'auto' && !selected.defaultEffect && !$('effect-field').hidden ? '0' : '';
+    loadPreview({samePose: true});
+  });
+  function cancelPreview() {
+    ++previewVersion;
+    pendingPreview?.abort();
+    pendingPreview = null;
+  }
+  function options(node, rows) {
+    node.replaceChildren(...rows.map(row => {
+      const entry = new Option(row.name, row.key);
+      entry.disabled = row.key === '';
+      return entry;
+    }));
+  }
+  function showGearFeedback(text, state) {
+    $('gear-feedback-text').textContent = text;
+    $('gear-feedback').dataset.state = state;
+    $('gear-feedback').hidden = !text;
+    const loading = state === 'loading';
+    $('gear-feedback-spinner').hidden = !loading;
+    $('viewer-gear-progress').hidden = !loading;
+    $('viewer-gear-progress-text').textContent = loading ? text : '';
+  }
+  function beginGearUpdate(item) {
+    const update = {game: item.game, name: describe(item), target: item.game === 'DD2' ? 'DD2 target' : 'DDON source'};
+    gearUpdate = update;
+    showGearFeedback('Loading ' + update.name + ' on the ' + update.target + '…', 'loading');
+    return update;
+  }
+  function finishGearUpdate(update, error) {
+    if (!update || update !== gearUpdate) return;
+    gearUpdate = null;
+    if (error) showGearFeedback('Could not load ' + update.name + '. ' + error, 'error');
+    else showGearFeedback(update.name + ' loaded on the ' + update.target + '.', 'ready');
+  }
+  function refreshOutfit() {
+    updateTokens();
+    if (selected.asset?.kind === 'animation' && !$('clip').hidden) loadPreview({samePose: true});
+  }
+  function equip(item, member, name, update = beginGearUpdate(item)) {
+    update.building = true;
+    const piece = {...item, member, name: name || item.name};
+    if (item.kind === 'weapon') {
+      setup['weapon_' + item.game.toLowerCase()] = piece;
+      setup.clearWeapon[item.game] = false;
+    } else {
+      setup.wear = setup.wear.filter(worn => worn.id !== piece.id &&
+        !(item.slot && worn.game === item.game && worn.slot === item.slot));
+      setup.wear.push(piece);
+    }
+    previewGear(item.game);
+  }
+  function previewGear(game) {
+    const motion = selected.asset?.kind === 'animation';
+    const playerMotion = $('member').selectedOptions[0]?.textContent.toLowerCase().startsWith('obj/pl/pl000000/');
+    const comparison = selected.asset?.id === 0 || (playerMotion && !setup.rig);
+    if (!motion || (!comparison && (selected.asset.game !== 'DD2' || game !== 'DD2'))) {
+      setup.rig = null;
+      updateTokens();
+      select({id: 0, game: 'DDON', kind: 'animation', name: 'Fighter attack study'});
+    } else {
+      refreshOutfit();
+    }
+  }
+  function renderArmorSets() {
+    const game = $('gear-game').value;
+    const savedBody = $('dd2-character').value === 'saved';
+    const sets = (armorSets || []).filter(set => set.game === game && (!set.body || savedBody || set.body === $('body').value));
+    $('gear-set-field').hidden = sets.length === 0;
+    $('gear-set').replaceChildren(new Option('Choose an armor set', ''), ...sets.map(set =>
+      new Option(set.name + ' · ' + set.count + ' pieces', set.id)));
+    $('gear-set').value = sets.some(set => set.id === setup.armorSet[game]) ? setup.armorSet[game] : '';
+  }
+  function changeGear(game, armor, weapon, restore = false) {
+    ++gearMemberVersion;
+    gearUpdate = null;
+    showGearFeedback('', '');
+    if (armor) {
+      setup.wear = setup.wear.filter(piece => piece.game !== game || piece.kind !== 'armor');
+      delete setup.armorSet[game];
+      setup.clearArmor[game] = !restore;
+    }
+    if (weapon) {
+      setup['weapon_' + game.toLowerCase()] = null;
+      setup.clearWeapon[game] = !restore;
+    }
+    renderArmorSets();
+    previewGear(game);
+  }
+  $('clear-armor').addEventListener('click', () => changeGear($('gear-game').value, true, false));
+  $('clear-weapon').addEventListener('click', () => changeGear($('gear-game').value, false, true));
+  $('restore-gear').addEventListener('click', () => changeGear($('gear-game').value, true, true, true));
+  $('gear-set').addEventListener('change', () => {
+    const set = armorSets?.find(item => item.id === $('gear-set').value);
+    if (!set) {
+      renderArmorSets();
+      return;
+    }
+    ++gearMemberVersion;
+    setup.wear = setup.wear.filter(piece => piece.game !== set.game || piece.kind !== 'armor');
+    setup.armorSet[set.game] = set.id;
+    setup.clearArmor[set.game] = false;
+    const update = beginGearUpdate({game: set.game, label: set.name});
+    update.building = true;
+    previewGear(set.game);
+  });
+  async function searchGear() {
+    renderArmorSets();
+    const version = ++gearVersion;
+    ++gearMemberVersion;
+    if (gearUpdate && !gearUpdate.building) {
+      gearUpdate = null;
+      showGearFeedback('', '');
+    }
+    $('gear-member').hidden = true;
+    $('gear-palette-field').hidden = true;
+    gearPalettes = [];
+    $('gear-results').replaceChildren();
+    $('gear-count').textContent = 'Searching…';
+    const kind = $('gear-kind').value;
+    const slot = $('gear-slot');
+    const armor = kind === 'armor';
+    $('gear-slot-label').textContent = armor ? 'Armor slot' : 'Weapon type';
+    const params = new URLSearchParams({game: $('gear-game').value, kind,
+                                       q: $('gear-search').value, page: gearPage});
+    if (slot.value) params.set(armor ? 'armor_region' : 'weapon_family', slot.value);
+    try {
+      const [result, sets] = await Promise.all([
+        api('/api/catalog', params),
+        armorSets ? Promise.resolve(armorSets) : api('/api/armor-sets', new URLSearchParams())
+      ]);
+      if (version !== gearVersion) return;
+      armorSets = sets;
+      renderArmorSets();
+      const filters = armor ? result.armor_filters : result.weapon_filters;
+      const current = slot.value;
+      slot.replaceChildren(new Option(armor ? 'All armor slots' : 'All weapon types', ''), ...filters.map(item =>
+        new Option(item.label, item.value)));
+      slot.value = filters.some(item => item.value === current) ? current : '';
+      gearRows = result.items;
+      $('gear-previous').disabled = gearPage === 0;
+      $('gear-next').disabled = (gearPage + 1) * 40 >= result.total;
+      $('gear-count').textContent = `${result.total.toLocaleString()} items`;
+      options($('gear-results'), gearRows.map((item, index) => ({
+        key: String(index),
+        name: item.label || item.shared ? describe(item) + ' · ' + item.name.split('/').pop().split('.mesh.')[0] : describe(item)
+      })));
+      Array.from($('gear-results').options).forEach((option, index) => {
+        option.title = (gearRows[index].aliases || []).join(', ');
+      });
+      $('gear-results').selectedIndex = -1;
+    } catch (error) {
+      if (version === gearVersion) $('gear-count').textContent = error.message;
+    }
+  }
+  async function selectGear() {
+    const version = ++gearMemberVersion;
+    const item = gearRows[$('gear-results').selectedIndex];
+    $('gear-member').hidden = true;
+    $('gear-palette-field').hidden = true;
+    gearPalettes = [];
+    if (!item) return;
+    const update = beginGearUpdate(item);
+    try {
+      const {members, palettes = []} = await api('/api/members', new URLSearchParams({asset: item.id}));
+      if (version !== gearMemberVersion) return;
+      options($('gear-member'), members.map((name, index) => ({key: String(index), name})));
+      $('gear-member').hidden = members.length < 2;
+      gearPalettes = palettes;
+      if (members.length && palettes.length > 1) {
+        options($('gear-palette'), palettes.map(look => ({key: String(look.id), name: look.label})));
+        $('gear-palette').value = String(item.id);
+        $('gear-palette-field').hidden = false;
+      }
+      if (members.length) equip(item, '0', members[0], update);
+      else finishGearUpdate(update, 'No preview model is available.');
+    } catch (error) {
+      if (version === gearMemberVersion) finishGearUpdate(update, error.message);
+    }
+  }
+  function updateTokens() {
+    $('outfit').replaceChildren();
+    $('scene-items').replaceChildren();
+    for (const [slot, label] of Object.entries(slots)) {
+      const item = setup[slot];
+      if (!item) continue;
+      const button = action(`${label} · ${describe(item)} ×`, () => { setup[slot] = null; refreshOutfit(); });
+      button.className = 'token';
+      $(['mob', 'object', 'mob_motion'].includes(slot) ? 'scene-items' : 'outfit').append(button);
+    }
+    setup.wear.forEach(item => {
+      const button = action(`${item.game} · ${describe(item)} ×`, () => {
+        setup.wear = setup.wear.filter(piece => piece.id !== item.id); refreshOutfit();
+      });
+      button.className = 'token';
+      $('outfit').append(button);
+    });
+  }
+  async function search() {
+    const version = ++searchVersion;
+    const game = $('game').value;
+    const kind = $('kind').value;
+    const vocation = $('vocation');
+    vocation.hidden = kind !== 'animation' || game === 'DD2';
+    const params = new URLSearchParams({game, kind, q: $('search').value, page});
+    if (!vocation.hidden && vocation.value) params.set('vocation', vocation.value);
+    try {
+      const response = await api('/api/catalog', params);
+      if (version !== searchVersion) return;
+      if (vocation.options.length === 1) {
+        for (const name of response.vocations) vocation.add(new Option(name, name));
+      }
+      for (const game of ['ddon', 'dd2']) {
+        const character = $(game + '-character');
+        const name = response[game + '_character'];
+        if (name && character.options.length === 1) {
+          character.add(new Option(name, 'saved', true, true), 0);
+        }
+      }
+      $('body').disabled = $('dd2-character').value === 'saved';
+      total = response.total;
+      $('count').textContent = `${total.toLocaleString()} entries`;
+      $('previous').disabled = page === 0;
+      $('next').disabled = (page + 1) * 40 >= total;
+      $('results').replaceChildren(...response.items.map(item => {
+        const button = action(`${item.game} · ${describe(item)}${item.count > 1 ? ' · ' + item.count + ' files' : ''}`, () => select(item));
+        button.className = 'row';
+        button.title = [item.name, ...(item.aliases || [])].join(' · ');
+        if (item.label) {
+          const resource = button.appendChild(document.createElement('small'));
+          resource.className = 'asset-id';
+          resource.textContent = item.name.split('/').pop();
+        }
+        button.setAttribute('aria-pressed', selected.asset?.id === item.id);
+        button.dataset.id = item.id;
+        return button;
+      }));
+    } catch (error) { $('count').textContent = error.message; }
+  }
+  function setupParams() {
+    const params = new URLSearchParams({asset: selected.asset.id, member: $('member').value});
+    for (const slot of Object.keys(slots)) {
+      if (!setup[slot]) continue;
+      params.set(slot, setup[slot].id);
+      params.set(slot + '_member', setup[slot].member);
+      if (slot === 'mob_motion') params.set('mob_motion_clip', setup[slot].clip);
+    }
+    for (const piece of setup.wear) params.append('wear', piece.id + ':' + piece.member);
+    for (const field of ['body', 'height', 'distance', 'hit', 'anchor', 'object-scale']) {
+      params.set(field.replace('-', '_'), $(field).value);
+    }
+    params.set('feet', $('feet').checked);
+    params.set('test_armor', $('test-armor').checked);
+    for (const game of ['DDON', 'DD2']) {
+      if (setup.clearArmor[game]) params.append('clear_armor', game);
+      if (setup.clearWeapon[game]) params.append('clear_weapon', game);
+      if (setup.armorSet[game]) params.set('armor_set_' + game.toLowerCase(), setup.armorSet[game]);
+    }
+    params.set('ddon_character', $('ddon-character').value);
+    params.set('ddon_body', $('ddon-character').value === 'female' ? 'female' : 'male');
+    params.set('dd2_character', $('dd2-character').value);
+    params.set('joint', $('joint').value);
+    if ($('source-event').value !== '') params.set('hit_time', $('source-event').value);
+    if (!$('effect-field').hidden && $('effect').value !== '') params.set('effect', $('effect').value);
+    return params;
+  }
+  function sequenceLimit() {
+    return Math.max(8, selected.clips.filter(item => item.key !== '').length);
+  }
+  function renderSequence() {
+    const list = $('sequence-list');
+    list.replaceChildren();
+    for (const [index, key] of selected.sequence.entries()) {
+      const row = list.appendChild(document.createElement('li'));
+      const name = selected.clips.find(clip => clip.key === key).name;
+      row.append(name);
+      const remove = action('Remove', () => { selected.sequence.splice(index, 1); renderSequence(); });
+      remove.setAttribute('aria-label', `Remove ${name} from position ${index + 1}`);
+      row.append(remove);
+    }
+    $('sequence-add').disabled = !$('clip').value || selected.sequence.length >= sequenceLimit();
+    $('sequence-load').disabled = selected.sequence.length < 2;
+    $('preview-single-clip').hidden = !selected.activeSequence.length;
+  }
+  async function select(asset) {
+    cancelPreview();
+    if (asset.kind !== 'animation' && gearUpdate?.building) {
+      gearUpdate = null;
+      showGearFeedback('', '');
+    }
+    $('viewer').hidden = true;
+    $('viewer-empty').hidden = false;
+    $('viewer-empty').textContent = asset.kind === 'animation' ? 'Reading animation clips…' : 'Reading model…';
+    const version = ++selectionVersion;
+    selected.asset = asset;
+    selected.clips = [];
+    selected.activeSequence = [];
+    selected.playAll = false;
+    $('sequence').hidden = true;
+    $('effect-field').hidden = true;
+    $('effect').replaceChildren(new Option('Off', ''));
+    $('fx-status').textContent = 'Select an animation to check for FX meshes.';
+    updateEvents();
+    $('selection').hidden = false;
+    $('title').textContent = describe(asset);
+    $('title').title = asset.name;
+    $('clip').hidden = true;
+    $('member').replaceChildren();
+    $('actions').replaceChildren();
+    $('results').querySelectorAll('button').forEach(btn => btn.setAttribute('aria-pressed', Number(btn.dataset.id) === asset.id));
+    message('Reading file entries…');
+    try {
+      const data = await api('/api/members', new URLSearchParams({asset: asset.id}));
+      if (version !== selectionVersion) return;
+      options($('member'), data.members.map((name, i) => ({name, key: String(i)})));
+      await chooseMember();
+    } catch (error) {
+      if (version === selectionVersion) {
+        message(error.message);
+        $('viewer-empty').textContent = error.message;
+        if (gearUpdate?.building) finishGearUpdate(gearUpdate, error.message);
+      }
+    }
+  }
+  async function chooseMember() {
+    cancelPreview();
+    const asset = selected.asset;
+    const version = ++selectionVersion;
+    selected.defaultEffect = null;
+    selected.spriteChoices = [];
+    selected.spriteOff = false;
+    vfx.layer = null;
+    $('motion-effect-field').hidden = true;
+    selected.sequence = [];
+    selected.activeSequence = [];
+    selected.playAll = false;
+    $('sequence').hidden = true;
+    $('sequence').open = false;
+    $('actions').replaceChildren();
+    if (asset.kind === 'animation') {
+      $('viewer').hidden = true;
+      $('viewer-empty').hidden = false;
+      $('viewer-empty').textContent = 'Reading animation clips…';
+      message('Reading motion slots…');
+      $('clip').hidden = true;
+      try {
+        const data = await api('/api/clips', setupParams());
+        if (version !== selectionVersion) return;
+        options($('clip'), data.clips);
+        selected.defaultEffect = data.default_effect;
+        const effects = data.effects || [];
+        selected.spriteChoices = data.sprite_choices || [];
+        const auto = selected.defaultEffect?.name || (effects.length ? 'archive mesh' : 'no linked effect');
+        options($('motion-effect'), [
+          {key: 'auto', name: 'Automatic · ' + auto},
+          {key: 'off', name: 'Off'},
+          ...selected.spriteChoices.map(item => ({key: item.id, name: item.game + ' · ' + item.name})),
+        ]);
+        $('effect-field').hidden = !effects.length;
+        $('effect').replaceChildren(...effects.map((path, index) =>
+          new Option(path.split('/').pop(), String(index))), new Option('Off', ''));
+        if (selected.defaultEffect) $('effect').value = '';
+        $('fx-status').textContent = selected.defaultEffect
+          ? 'The motion loads with the automatic effect. Choose a variant under Motion effect.'
+          : effects.length
+          ? 'The first archive mesh is selected by default. The sample or event marker sets its preview timing.'
+          : 'This archive has no indexed FX mesh. Native particles and trails are not supported.';
+        selected.clips = data.clips;
+        const playable = data.clips.filter(item => item.key !== '').map(item => item.key);
+        const multi = asset.game === 'DDON' && playable.length >= 2;
+        $('sequence').hidden = !multi;
+        if (multi) {
+          selected.sequence = playable;
+          selected.activeSequence = [...playable];
+          selected.playAll = true;
+          $('sequence').open = true;
+          renderSequence();
+        }
+        updateEvents();
+        $('clip').hidden = false;
+        message(`${data.slots} indexed slots · ${data.unavailable} unavailable in this preview${data.message ? '. ' + data.message : ''}`);
+        if (data.clips.some(item => item.key !== '')) {
+          $('actions').append(action('Reload preview', loadPreview));
+          if (data.dd2_export) $('actions').append(action('Export selected clip for DD2', exportDd2Clip));
+          $('actions').append(action('Equipment', () => {
+            $('equipment').open = true;
+            $('gear-search').focus();
+          }));
+          $('actions').append(action('FX', () => {
+            const panel = $('target-fx');
+            panel.open = true;
+            panel.scrollIntoView({block: 'nearest'});
+            if (!$('effect-field').hidden) $('effect').focus({preventScroll: true});
+            else $('motion-effect').focus({preventScroll: true});
+          }));
+          if (asset.game === 'DDON') $('actions').append(action('Use as target motion', () => {
+            setup.mob_motion = {id: asset.id, member: $('member').value, clip: $('clip').value,
+                                name: $('clip').selectedOptions[0].textContent};
+            updateTokens(); message('Target motion saved. Load the attacker’s animation to apply it.');
+          }));
+          loadPreview();
+        } else {
+          $('viewer-empty').textContent = data.message || 'This archive member has no playable clips.';
+          if (gearUpdate?.building) finishGearUpdate(gearUpdate, $('viewer-empty').textContent);
+        }
+      } catch (error) {
+        if (version === selectionVersion) {
+          message(error.message);
+          $('viewer-empty').textContent = error.message;
+          if (gearUpdate?.building) finishGearUpdate(gearUpdate, error.message);
+        }
+      }
+      return;
+    }
+    message('');
+    $('actions').append(action('Reload preview', loadPreview));
+    const setSlot = slot => {
+      setup[slot] = {...asset, member: $('member').value, name: $('member').selectedOptions[0].textContent};
+      updateTokens(); message('Selection saved. Load an animation to apply it.');
+      if (slot === 'mob') loadTargetJoints(setup.mob);
+    };
+    if (asset.game === 'DDON' && (asset.kind === 'model' || asset.kind === 'appearance'))
+      $('actions').append(action('Use as DDON rig', () => setSlot('rig')));
+    if (asset.kind === 'weapon') $('actions').append(action('Equip right hand', () => {
+      equip(asset, $('member').value, $('member').selectedOptions[0]?.textContent);
+    }));
+    if (asset.game === 'DD2' && asset.kind === 'appearance') {
+      if (asset.name.includes('/head/')) $('actions').append(action('Use this head', () => setSlot('head')));
+    }
+    const wearable = asset.kind === 'armor' || asset.kind === 'appearance' &&
+      (asset.game === 'DDON' || /\/(?:hair|beard)\//.test(asset.name));
+    if (wearable) $('actions').append(action('Add to outfit', () => {
+      equip(asset, $('member').value, $('member').selectedOptions[0]?.textContent);
+    }));
+    if (asset.kind === 'target' || asset.kind === 'model') $('actions').append(action('Set as target', () => setSlot('mob')));
+    $('actions').append(action('Set as attached object', () => setSlot('object')));
+    loadPreview();
+  }
+  function updateEvents() {
+    const picker = $('source-event');
+    const keys = selected.activeSequence.length ? selected.activeSequence : [$('clip').value];
+    picker.replaceChildren(new Option('Manual sample', ''));
+    let offset = 0;
+    for (const key of keys) {
+      const row = selected.clips.find(item => item.key === key);
+      if (!row) continue;
+      for (const marker of row.events || []) {
+        const time = offset + marker.time;
+        const name = `${time.toFixed(3)} s · group ${marker.group} · ${JSON.stringify(marker.codes)}`;
+        picker.append(new Option(name.slice(0, 105), String(time)));
+      }
+      offset += row.duration || 0;
+    }
+  }
+  async function loadTargetJoints(item) {
+    $('joint').replaceChildren(new Option('Height marker', ''));
+    try {
+      const result = await api('/api/joints', new URLSearchParams({asset: item.id, member: item.member}));
+      if (item !== setup.mob) return;
+      for (const joint of result.joints) $('joint').append(new Option(joint, joint));
+    } catch { /* Some props and creatures have no named mesh joints. */ }
+  }
+  async function loadPreview({samePose = false, solo = false, autoplay = false} = {}) {
+    const effect = syncEffectControls();
+    if (solo ? !effect : !selected.asset || (selected.asset.kind === 'animation' && !$('clip').value)) return;
+    cancelPreview();
+    const version = ++previewVersion;
+    const controller = new AbortController();
+    pendingPreview = controller;
+    const params = solo ? new URLSearchParams({effect: effect.id}) : setupParams();
+    const viewer = $('viewer');
+    const currentPreview = samePose ? viewer.contentDocument : null;
+    const currentFrame = currentPreview?.querySelector('#timeline')?.value;
+    const currentCamera = currentPreview?.defaultView?.getPreviewCamera?.();
+    const currentLoop = currentPreview?.querySelector('#loop')?.checked;
+    const equipmentOpen = currentPreview?.querySelector('#equipment-report')?.open;
+    const animation = !solo && selected.asset.kind === 'animation';
+    const update = animation && gearUpdate?.building ? gearUpdate : null;
+    if (animation) {
+      params.set('clip', $('clip').value);
+      if (selected.spriteOff) params.set('sprite_off', 'true');
+      if (vfx.layer) {
+        params.set('sprite', vfx.layer.id);
+        params.set('effect_anchor', vfx.layer.anchor === 'target' && !setup.mob ? 'body' : vfx.layer.anchor);
+        params.set('effect_trigger', vfx.layer.trigger);
+      }
+      if (selected.playAll) params.set('sequence', 'all');
+      else for (const key of selected.activeSequence) params.append('stage', key);
+    }
+    const name = solo ? effect.name : selected.activeSequence.length ? `${describe(selected.asset)} clip sequence`
+      : animation ? $('clip').selectedOptions[0].textContent : describe(selected.asset);
+    const building = `Building ${name}…`;
+    message(building);
+    $('viewer-empty').textContent = building;
+    if (!samePose) {
+      viewer.hidden = true;
+      $('viewer-empty').hidden = false;
+    }
+    try {
+      const response = await fetch(url(solo ? '/effect-preview' : '/scene', params), {signal: controller.signal});
+      if (!response.ok) throw Error((await response.json()).error || response.statusText);
+      const result = await response.blob();
+      if (version !== previewVersion) return;
+      if (lastURL) URL.revokeObjectURL(lastURL);
+      lastURL = URL.createObjectURL(result);
+      const src = lastURL;
+      viewer.onload = async () => {
+        const doc = viewer.contentDocument;
+        if (version !== previewVersion || doc?.URL !== src) return;
+        viewer.hidden = false;
+        $('viewer-empty').hidden = true;
+        const timeline = doc.querySelector('#timeline');
+        const loop = doc.querySelector('#loop');
+        if (loop && currentLoop != null) loop.checked = currentLoop;
+        const report = doc.querySelector('#equipment-report');
+        if (report && equipmentOpen != null) report.open = equipmentOpen;
+        if (timeline && currentFrame != null) {
+          timeline.value = currentFrame;
+          timeline.dispatchEvent(new Event('input'));
+        }
+        viewer.contentWindow.setPreviewCamera?.(currentCamera);
+        viewer.contentWindow.dispatchEvent(new Event('resize'));
+        if (update) {
+          try {
+            const models = await viewer.contentWindow.previewReady;
+            if (version !== previewVersion) return;
+            finishGearUpdate(update, models?.some(label => label.startsWith(update.game))
+              ? null : 'The character model is unavailable in this preview.');
+          } catch (error) {
+            if (version !== previewVersion) return;
+            finishGearUpdate(update, error.message);
+          }
+        }
+        if (autoplay) {
+          await viewer.contentWindow.previewReady;
+          if (version !== previewVersion) return;
+          doc.querySelector('#play')?.click();
+        }
+        message('Preview loaded.');
+      };
+      viewer.src = src;
+    } catch (error) {
+      if (version === previewVersion && error.name !== 'AbortError') {
+        message(error.message);
+        $('viewer-empty').textContent = error.message;
+        finishGearUpdate(update, error.message);
+      }
+    } finally {
+      if (pendingPreview === controller) pendingPreview = null;
+    }
+  }
+  $('member').addEventListener('change', chooseMember);
+  async function exportDd2Clip(event) {
+    if (!$('clip').value) {
+      message('Select a playable clip before exporting.');
+      return;
+    }
+    const button = event.currentTarget;
+    button.disabled = true;
+    message('Building DD2 playback package…');
+    try {
+      const params = setupParams();
+      params.set('clip', $('clip').value);
+      const response = await fetch('/export/dd2?' + params);
+      if (!response.ok) throw new Error((await response.json()).error);
+      const url = URL.createObjectURL(await response.blob());
+      const download = document.createElement('a');
+      download.href = url;
+      download.download = 'DDON-Reborn-DD2-Preview.zip';
+      download.click();
+      setTimeout(() => URL.revokeObjectURL(url), 30_000);
+      message('DD2 playback package built. See the ZIP for installation steps.');
+    } catch (error) {
+      message(error.message);
+    } finally {
+      button.disabled = false;
+    }
+  }
+  function previewSingleClip() {
+    selected.activeSequence = [];
+    selected.playAll = false;
+    renderSequence();
+    updateEvents();
+    loadPreview();
+  }
+  $('clip').addEventListener('change', previewSingleClip);
+  $('preview-single-clip').addEventListener('click', previewSingleClip);
+  $('sequence-add').addEventListener('click', () => {
+    if ($('clip').value && selected.sequence.length < sequenceLimit()) selected.sequence.push($('clip').value);
+    renderSequence();
+  });
+  $('sequence-load').addEventListener('click', () => {
+    selected.activeSequence = [...selected.sequence];
+    selected.playAll = false;
+    renderSequence();
+    updateEvents();
+    loadPreview();
+  });
+  for (const key of ['effect', 'source-event', 'hit']) $(key).addEventListener('change', () => {
+    if (key === 'effect') {
+      vfx.layer = null;
+      selected.spriteOff = true;
+    }
+    if (selected.asset?.kind === 'animation' &&
+        (!$('effect-field').hidden || setup.object || vfx.layer?.trigger === 'marker')) loadPreview();
+  });
+  for (const key of ['body', 'height', 'feet', 'test-armor', 'ddon-character', 'dd2-character']) $(key).addEventListener('change', () => {
+    $('body').disabled = $('dd2-character').value === 'saved';
+    renderArmorSets();
+    if (selected.asset?.kind === 'animation' && !$('clip').hidden) {
+      if (key === 'ddon-character' && selected.asset.game === 'DDON') chooseMember();
+      else loadPreview();
+    }
+  });
+  for (const key of ['game', 'kind', 'vocation']) $(key).addEventListener('change', () => { page = 0; search(); });
+  $('search').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { page = 0; search(); }, 180); });
+  $('previous').addEventListener('click', () => { if (page > 0) { page--; search(); } });
+  $('next').addEventListener('click', () => { if ((page + 1) * 40 < total) { page++; search(); } });
+  $('equipment').addEventListener('toggle', () => {
+    if ($('equipment').open && !$('gear-results').length) searchGear();
+  });
+  for (const key of ['gear-game', 'gear-kind', 'gear-slot']) $(key).addEventListener('change', () => {
+    if (key !== 'gear-slot') $('gear-slot').value = '';
+    gearPage = 0; searchGear();
+  });
+  $('gear-search').addEventListener('input', () => {
+    clearTimeout(gearTimer);
+    gearTimer = setTimeout(() => { gearPage = 0; searchGear(); }, 180);
+  });
+  $('gear-previous').addEventListener('click', () => { if (gearPage > 0) { gearPage--; searchGear(); } });
+  $('gear-next').addEventListener('click', () => { gearPage++; searchGear(); });
+  $('gear-results').addEventListener('change', selectGear);
+  $('gear-palette').addEventListener('change', () => {
+    const item = gearRows[$('gear-results').selectedIndex];
+    const variant = gearPalettes.find(look => String(look.id) === $('gear-palette').value);
+    if (!item || !variant || $('gear-palette-field').hidden) return;
+    const chosen = {...item, id: variant.id, label: variant.label, key: variant.key};
+    equip(chosen, $('gear-member').value, $('gear-member').selectedOptions[0]?.textContent, beginGearUpdate(chosen));
+  });
+  $('gear-member').addEventListener('change', () => {
+    const item = gearRows[$('gear-results').selectedIndex];
+    const variant = gearPalettes.find(look => String(look.id) === $('gear-palette').value);
+    const chosen = item && variant ? {...item, id: variant.id, label: variant.label, key: variant.key} : item;
+    if (chosen) equip(chosen, $('gear-member').value, $('gear-member').selectedOptions[0]?.textContent, beginGearUpdate(chosen));
+  });
+  const outfitFields = ['ddon-character', 'dd2-character', 'body', 'height', 'test-armor'];
+  const outfitSlots = ['head', 'weapon_ddon', 'weapon_dd2'];
+  let outfitReady = false;
+  function savedPiece(item) {
+    return item?.key ? {key: item.key, member: item.name} : null;
+  }
+  window.getViewerOutfit = () => outfitReady ? {
+    version: 1,
+    character: Object.fromEntries(outfitFields.map(key => [key, $(key).type === 'checkbox' ? $(key).checked : $(key).value])),
+    slots: Object.fromEntries(outfitSlots.map(slot => [slot, savedPiece(setup[slot])])),
+    gear: {armorSet: setup.armorSet, clearArmor: setup.clearArmor, clearWeapon: setup.clearWeapon},
+    armor: setup.wear.map(savedPiece).filter(Boolean),
+  } : null;
+  async function startLibrary() {
+    const saved = window.savedViewerOutfit;
+    const sidebar = document.querySelector('aside');
+    if (saved?.version === 1) sidebar.inert = true;
+    await search();
+    if (saved?.version !== 1) {
+      outfitReady = true;
+      return;
+    }
+    const params = new URLSearchParams();
+    const armor = Array.isArray(saved.armor) ? saved.armor : [];
+    for (const piece of [...Object.values(saved.slots || {}), ...armor]) {
+      if (piece?.key) params.append('piece', piece.key);
+    }
+    $('viewer-empty').textContent = 'Restoring saved equipment…';
+    try {
+      const entries = await api('/api/outfit', params);
+      for (const key of outfitFields) {
+        const value = saved.character?.[key];
+        const node = $(key);
+        if (node.type === 'checkbox' && typeof value === 'boolean') node.checked = value;
+        else if (node instanceof HTMLSelectElement && [...node.options].some(option => option.value === value))
+          node.value = value;
+        else if (key === 'height' && Number(value) >= Number(node.min) && Number(value) <= Number(node.max))
+          node.value = value;
+      }
+      $('body').disabled = $('dd2-character').value === 'saved';
+      function restore(piece) {
+        const row = piece && entries[piece.key];
+        const member = row?.members?.findIndex(name => name.toLowerCase() === String(piece.member).toLowerCase()) ?? -1;
+        return member < 0 ? null : {...row.item, member: String(member), name: row.members[member]};
+      }
+      for (const slot of outfitSlots) setup[slot] = restore(saved.slots?.[slot]);
+      for (const game of ['DDON', 'DD2']) {
+        if (typeof saved.gear?.armorSet?.[game] === 'string') setup.armorSet[game] = saved.gear.armorSet[game];
+        if (saved.gear?.clearArmor?.[game] === true) setup.clearArmor[game] = true;
+        if (saved.gear?.clearWeapon?.[game] === true) setup.clearWeapon[game] = true;
+      }
+      setup.wear = armor.map(restore).filter(Boolean);
+      updateTokens();
+      const missing = armor.length - setup.wear.length +
+        outfitSlots.filter(slot => saved.slots?.[slot] && !setup[slot]).length;
+      if ($('outfit').children.length || missing || Object.keys(setup.armorSet).length ||
+          Object.keys(setup.clearArmor).length || Object.keys(setup.clearWeapon).length) $('equipment').open = true;
+      if (missing) showGearFeedback('Some saved equipment is unavailable in the current asset catalog.', 'error');
+      outfitReady = true;
+      await select({id: 0, game: 'DDON', kind: 'animation', name: 'Fighter attack study'});
+    } catch (error) {
+      $('viewer-empty').textContent = 'Could not restore the saved equipment. ' + error.message;
+    } finally {
+      sidebar.inert = false;
+    }
+  }
+  startLibrary();
+</script>
